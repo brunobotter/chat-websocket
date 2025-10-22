@@ -1,23 +1,34 @@
 package main
 
 import (
-	"log"
+	"context"
+	"fmt"
 	"net/http"
 
+	"github.com/brunobotter/chat-websocket/internal/config"
+	"github.com/brunobotter/chat-websocket/internal/logger"
 	"github.com/brunobotter/chat-websocket/internal/websocket"
+	"go.uber.org/zap"
 )
 
 func main() {
-	hub := websocket.NewHub()
+	logger.Init()
+	cfg := config.Init()
+	hub := websocket.NewHub(logger.Logger)
+	ctx := context.Background()
 	go hub.Run()
 
+	go cfg.Redis.SubscribeMessages(ctx, "default", hub)
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		websocket.HandleConnections(hub, w, r)
+		websocket.HandleConnections(hub, w, r, cfg.Redis)
 	})
 
-	log.Println("🚀 Servidor iniciado em :8080")
-	err := http.ListenAndServe(":8080", nil)
+	logger.L().Info("🚀 Servidor iniciado", zap.Int("port", cfg.Cfg.Server.Port))
+	err := http.ListenAndServe(fmt.Sprintf(":%d", cfg.Cfg.Server.Port), nil)
 	if err != nil {
-		log.Fatal("Erro ao iniciar servidor:", err)
+		logger.L().Error("🚀 Servidor com problema", zap.Int("port", cfg.Cfg.Server.Port))
 	}
+	defer logger.Logger.Sync()
+	defer config.Init().Redis.Close()
+
 }

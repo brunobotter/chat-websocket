@@ -1,9 +1,12 @@
 package websocket
 
 import (
-	"log"
+	"context"
+	"encoding/json"
 	"net/http"
+	"time"
 
+	"github.com/brunobotter/chat-websocket/internal/dto"
 	"github.com/gorilla/websocket"
 )
 
@@ -12,35 +15,58 @@ var upgrader = websocket.Upgrader{
 }
 
 type Client struct {
-	Conn *websocket.Conn
-	Send chan []byte
-	Hub  *Hub
+	Conn   *websocket.Conn
+	Send   chan []byte
+	Hub    *Hub
+	RoomID string
+	User   string
 }
 
-func HandleConnections(hub *Hub, w http.ResponseWriter, r *http.Request) {
-	ws, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Println("Erro ao abrir conexão:", err)
-		return
+func HandleConnections(hub *Hub, w http.ResponseWriter, r *http.Request, publisher Publisher) {
+	ws, _ := upgrader.Upgrade(w, r, nil)
+	room := r.URL.Query().Get("room")
+	user := r.URL.Query().Get("user")
+
+	client := &Client{
+		Conn:   ws,
+		Send:   make(chan []byte),
+		Hub:    hub,
+		RoomID: room,
+		User:   user,
 	}
-	client := &Client{Conn: ws, Send: make(chan []byte), Hub: hub}
 	hub.Register <- client
 
 	go client.writePump()
-	client.readPump()
+	client.readPump(publisher)
 }
 
-func (c *Client) readPump() {
+func (c *Client) readPump(publisher Publisher) {
 	defer func() {
 		c.Hub.Unregister <- c
 		c.Conn.Close()
 	}()
+
 	for {
-		_, msg, err := c.Conn.ReadMessage()
+		_, msgBytes, err := c.Conn.ReadMessage()
 		if err != nil {
 			break
 		}
-		c.Hub.Broadcast <- msg
+		var incoming dto.Incoming
+		if err := json.Unmarshal(msgBytes, &incoming); err != nil {
+			continue
+		}
+
+		msg := dto.Message{
+			User:      c.User,
+			Content:   incoming.Content,
+			Timestamp: time.Now(),
+			RoomID:    c.RoomID,
+			Target:    incoming.Target,
+		}
+
+		// Publica no Redis
+		ctx := context.Background()
+		_ = publisher.PublishMessage(ctx, "chat:"+c.RoomID, msg)
 	}
 }
 
