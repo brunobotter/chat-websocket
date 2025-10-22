@@ -18,7 +18,7 @@ func main() {
 	ctx := context.Background()
 	go hub.Run()
 
-	go cfg.Redis.SubscribeMessages(ctx, "default", hub)
+	go cfg.Redis.SubscribeAllRooms(ctx, hub)
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		websocket.HandleConnections(hub, w, r, cfg.Redis)
 	})
