@@ -1,0 +1,6 @@
+{
+    "gopls.env": {
+        "GOFLAGS": "-tags=test"
+    },
+    "makefile.configureOnOpen": false
+}
