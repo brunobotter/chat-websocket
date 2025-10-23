@@ -22,25 +22,33 @@ type Client struct {
 	User   string
 }
 
-func HandleConnections(hub *Hub, w http.ResponseWriter, r *http.Request, publisher Publisher) {
-	ws, _ := upgrader.Upgrade(w, r, nil)
+func HandleConnections(hub *Hub, w http.ResponseWriter, r *http.Request, store ChatStore) {
+	ws, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		return
+	}
 	room := r.URL.Query().Get("room")
 	user := r.URL.Query().Get("user")
 
 	client := &Client{
 		Conn:   ws,
-		Send:   make(chan []byte),
+		Send:   make(chan []byte, 256),
 		Hub:    hub,
 		RoomID: room,
 		User:   user,
 	}
 	hub.Register <- client
+	if history, err := store.GetMessages(r.Context(), room, 50); err == nil {
+		for _, msg := range history {
+			client.Send <- []byte(msg.Content)
+		}
+	}
 
 	go client.writePump()
-	client.readPump(publisher)
+	client.readPump(store)
 }
 
-func (c *Client) readPump(publisher Publisher) {
+func (c *Client) readPump(store ChatStore) {
 	defer func() {
 		c.Hub.Unregister <- c
 		c.Conn.Close()
@@ -64,9 +72,9 @@ func (c *Client) readPump(publisher Publisher) {
 			Target:    incoming.Target,
 		}
 
-		// Publica no Redis
 		ctx := context.Background()
-		_ = publisher.PublishMessage(ctx, "chat:"+c.RoomID, msg)
+		_ = store.PublishMessage(ctx, "chat:"+c.RoomID, msg)
+		_ = store.SaveMessage(ctx, c.RoomID, msg, 50)
 	}
 }
 

@@ -60,12 +60,3 @@ func (cw *ClientWrapper) Close() error {
 	cw.Logger.Info("Fechando conexão com Redis")
 	return cw.Client.Close()
 }
-
-func (cw *ClientWrapper) Publish(ctx context.Context, channel string, payload interface{}) error {
-	if err := cw.Client.Publish(ctx, channel, payload).Err(); err != nil {
-		cw.Logger.Error("Erro ao publicar mensagem no Redis", zap.String("channel", channel), zap.Error(err))
-		return err
-	}
-	cw.Logger.Debug("Mensagem publicada no Redis", zap.String("channel", channel))
-	return nil
-}
