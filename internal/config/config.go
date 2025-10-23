@@ -1,7 +1,7 @@
 package config
 
 import (
-	"os"
+	"strings"
 
 	"github.com/brunobotter/chat-websocket/internal/logger"
 	"github.com/brunobotter/chat-websocket/internal/redis"
@@ -13,14 +13,12 @@ type Deps struct {
 	Cfg    *Mapping
 	Logger *zap.Logger
 	Redis  *redis.ClientWrapper
-	//Svc contract.ServiceManager
 }
 
 func Init() *Deps {
 	logger.L().Info("Inicializando configuração")
 
-	profile := os.Getenv("PROFILE")
-	cfg, err := read(profile)
+	cfg, err := read()
 	if err != nil {
 		logger.L().Error("Erro ao ler config", zap.Error(err))
 	}
@@ -50,8 +48,8 @@ func Init() *Deps {
 	return deps
 }
 
-func read(profile string) (*Mapping, error) {
-	setupConfig(profile)
+func read() (*Mapping, error) {
+	setupConfig()
 	err := viper.ReadInConfig()
 	if err != nil {
 		logger.L().Error("Erro ao ler config", zap.Error(err))
@@ -67,8 +65,14 @@ func read(profile string) (*Mapping, error) {
 	return &config, nil
 }
 
-func setupConfig(profile string) {
-	viper.AutomaticEnv()
-	viper.SetConfigName(profile)
+func setupConfig() {
 	viper.AddConfigPath(".")
+	viper.AddConfigPath("cmd/server")
+	viper.SetConfigName("dev")
+	viper.SetConfigType("yaml")
+
+	viper.SetEnvPrefix("APP")
+	viper.AutomaticEnv()
+
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 }

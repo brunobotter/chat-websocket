@@ -19,6 +19,7 @@ func main() {
 	go hub.Run()
 
 	go cfg.Redis.SubscribeAllRooms(ctx, hub)
+
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		websocket.HandleConnections(hub, w, r, cfg.Redis)
 	})
@@ -26,9 +27,8 @@ func main() {
 	logger.L().Info("🚀 Servidor iniciado", zap.Int("port", cfg.Cfg.Server.Port))
 	err := http.ListenAndServe(fmt.Sprintf(":%d", cfg.Cfg.Server.Port), nil)
 	if err != nil {
-		logger.L().Error("🚀 Servidor com problema", zap.Int("port", cfg.Cfg.Server.Port))
+		logger.L().Error("❌ Servidor com problema", zap.Error(err))
 	}
 	defer logger.Logger.Sync()
-	defer config.Init().Redis.Close()
-
+	defer cfg.Redis.Close()
 }
