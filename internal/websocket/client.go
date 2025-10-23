@@ -82,6 +82,10 @@ func HandleConnections(hub *Hub, w http.ResponseWriter, r *http.Request, store C
 		}
 	}
 
+	// Mensagem de boas-vindas
+	msg, _ := json.Marshal(map[string]string{"msg": "connected to " + room})
+	client.Send <- msg
+
 	go client.writePump()
 	client.readPump(store)
 }
