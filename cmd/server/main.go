@@ -14,7 +14,7 @@ import (
 func main() {
 	logger.Init()
 	cfg := config.Init()
-	hub := websocket.NewHub(logger.Logger)
+	hub := websocket.NewHub(logger.Logger, cfg.Redis)
 	ctx := context.Background()
 	go hub.Run()
 
