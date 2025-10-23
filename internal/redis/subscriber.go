@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/brunobotter/chat-websocket/internal/dto"
 	"github.com/brunobotter/chat-websocket/internal/websocket"
@@ -61,6 +62,11 @@ func (cw *ClientWrapper) SaveMessage(ctx context.Context, roomID string, msg dto
 	// LTRIM mantém apenas as últimas `maxMessages`
 	if err := cw.Client.LTrim(ctx, key, 0, int64(maxMessages-1)).Err(); err != nil {
 		cw.Logger.Error("Erro ao limitar mensagens no Redis", zap.String("room", roomID), zap.Error(err))
+		return err
+	}
+
+	if err := cw.Client.Expire(ctx, key, 6*time.Hour).Err(); err != nil {
+		cw.Logger.Error("Erro ao inserir expiracao no redis", zap.String("room", roomID), zap.Error(err))
 		return err
 	}
 
