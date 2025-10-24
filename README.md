@@ -1,52 +1,64 @@
-# 💬 ChatApp — Etapa 1: WebSocket Local em Go
+# 💬 Chat WebSocket em Go
 
-Este projeto é o início de um **chat distribuído em tempo real**, feito em **Go**.  
-Nesta primeira etapa, o servidor implementa um **broadcast local** via WebSocket —  
-todas as mensagens recebidas são enviadas para **todos os clientes conectados**.
+Este projeto é um **sistema de chat em tempo real** desenvolvido em **Go**, com suporte a **autenticação JWT**, **Redis Pub/Sub** e **load balancing com Nginx**.  
+A aplicação é escalável, permitindo múltiplas instâncias de servidor comunicando-se via Redis.
 
 ---
 
-## 🚀 Tecnologias usadas
+## 🚀 Tecnologias utilizadas
 
 - **Go 1.24+**
-- **Gorilla WebSocket**
-- **HTTP nativo (net/http)**
+- **Echo Framework** — roteamento HTTP rápido e minimalista
+- **Redis** — Pub/Sub e persistência leve das mensagens
+- **JWT (JSON Web Token)** — autenticação e autorização (bem simples)
+- **WebSocket (gorilla/websocket)** — comunicação em tempo real
+- **Nginx** — proxy reverso e balanceamento de carga
+- **Docker & Docker Compose** — ambiente de desenvolvimento e deploy
+- **Testify** — testes unitários e integrados (Em andamento)
 
-## ⚙️ Como rodar o servidor
 
-1. Instale as dependências:
-   ```bash
-   go mod tidy
-   go run main.go
+## ⚙️ Como rodar o projeto
 
-   O servidor será iniciado em:
-   http://localhost:8080
+### 🐳 Rodando com Docker Compose
 
-🧪 Testando via navegador
+```bash
+docker compose up --build
 
-Abra duas abas no navegador.
+1. Login
+POST http://localhost:8000/login
+Content-Type: application/json
 
-Acesse este código JavaScript no console (pressione F12 → aba Console):
+{
+  "user": "bruno",
+  "password": "1234"
+}
 
-const ws = new WebSocket("ws://localhost:8080/ws");
+2. Refresh token
 
-ws.onopen = () => console.log("✅ Conectado ao servidor WebSocket");
+POST http://localhost:8000/refresh
+Authorization: Bearer <refresh_token>
 
-ws.onmessage = (event) => console.log("📩 Mensagem recebida:", event.data);
+3. Conecta ao chat da sala
 
-// Para enviar uma mensagem:
-// ws.send("Oi, outra aba aqui!");
+GET ws://localhost:8000/ws?room=default&user=bruno
+Authorization: Bearer <access_token>
 
-🧪 Testando via Insomnia (ou Postman)
+{
+    "content": "Olá, mundo!"
+}
 
-Abra o Insomnia (ou outro cliente WebSocket).
+Próximos passos
 
-Crie uma nova requisição WebSocket:
+ Testes unitarios - Em andamento  
 
-Método: WS
+ Integrar banco de dados real (usuários, permissões, histórico)
 
-URL: ws://localhost:8080/ws
+ Adicionar logs estruturados em todas as rotas
 
-Clique em Connect.
+ Implementar middleware de autenticação JWT no Echo
 
-Envie uma mensagem:
+ Criar testes E2E completos via Docker Compose
+
+ Adicionar métricas e monitoramento (Prometheus + Grafana)
+
+ Refatoração

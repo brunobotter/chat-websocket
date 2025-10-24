@@ -30,7 +30,7 @@ func HandleConnections(hub *Hub, w http.ResponseWriter, r *http.Request, store C
 	}
 
 	// 1. Pegando token do header Authorization
-	tokenStr := r.Header.Get("Authorization") // "Bearer <token>"
+	tokenStr := r.Header.Get("Authorization")
 	if tokenStr == "" {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		ws.Close()
