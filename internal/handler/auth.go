@@ -5,12 +5,24 @@ import (
 	"strings"
 
 	"github.com/brunobotter/chat-websocket/internal/auth"
+	"github.com/brunobotter/chat-websocket/internal/dto"
 	"github.com/labstack/echo/v4"
 )
 
 func Login(c echo.Context) error {
-	user := c.FormValue("user")
-	pass := c.FormValue("password")
+
+	var cred dto.Auth
+
+	if err := c.Bind(&cred); err != nil {
+		return c.JSON(http.StatusBadRequest, echo.Map{"error": "invalid request"})
+	}
+
+	user := cred.User
+	pass := cred.Password
+
+	if user == "" || pass == "" {
+		return c.JSON(http.StatusBadRequest, echo.Map{"error": "missing user or password"})
+	}
 
 	if pass != "1234" {
 		return c.JSON(http.StatusUnauthorized, echo.Map{"error": "invalid credentials"})

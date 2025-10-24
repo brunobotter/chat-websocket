@@ -14,13 +14,12 @@ type Claims struct {
 }
 
 var (
-	accessSecret  = []byte("super-secret-access-key") // Idealmente viria do .env
-	refreshSecret = []byte("super-secret-refresh-key")
+	accessSecret  = []byte("132")
+	refreshSecret = []byte("123")
 	AccessTTL     = 5 * time.Minute
 	RefreshTTL    = 24 * time.Hour
 )
 
-// GenerateAccessToken cria o JWT de acesso
 func GenerateAccessToken(user string, rooms []string) (string, error) {
 	claims := Claims{
 		User:  user,
@@ -36,7 +35,6 @@ func GenerateAccessToken(user string, rooms []string) (string, error) {
 	return token.SignedString(accessSecret)
 }
 
-// GenerateRefreshToken cria o JWT de refresh (sem rooms)
 func GenerateRefreshToken(user string) (string, error) {
 	claims := jwt.RegisteredClaims{
 		Subject:   user,
@@ -49,7 +47,6 @@ func GenerateRefreshToken(user string) (string, error) {
 	return token.SignedString(refreshSecret)
 }
 
-// ValidateAccessToken valida o token de acesso e retorna o usuário e as rooms
 func ValidateAccessToken(tokenStr string) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (interface{}, error) {
 		return accessSecret, nil
@@ -64,7 +61,6 @@ func ValidateAccessToken(tokenStr string) (*Claims, error) {
 	return nil, errors.New("invalid token")
 }
 
-// ValidateRefreshToken valida o token de refresh e retorna o usuário
 func ValidateRefreshToken(tokenStr string) (string, error) {
 	token, err := jwt.ParseWithClaims(tokenStr, &jwt.RegisteredClaims{}, func(t *jwt.Token) (interface{}, error) {
 		return refreshSecret, nil
