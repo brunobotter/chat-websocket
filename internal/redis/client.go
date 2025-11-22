@@ -43,7 +43,7 @@ func NewClient(cfg RedisConfig, logger *zap.Logger) (*ClientWrapper, error) {
 	defer cancel()
 
 	if err := rdb.Ping(ctx).Err(); err != nil {
-		logger.Fatal("Falha no ping ao Redis", zap.Error(err))
+		logger.Error("Falha no ping ao Redis", zap.Error(err))
 		_ = rdb.Close()
 		return nil, err
 	}

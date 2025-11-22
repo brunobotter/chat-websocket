@@ -10,27 +10,28 @@ import (
 )
 
 func Login(c echo.Context) error {
-
 	var cred dto.Auth
-
 	if err := c.Bind(&cred); err != nil {
 		return c.JSON(http.StatusBadRequest, echo.Map{"error": "invalid request"})
 	}
 
-	user := cred.User
-	pass := cred.Password
-
-	if user == "" || pass == "" {
+	if cred.User == "" || cred.Password == "" {
 		return c.JSON(http.StatusBadRequest, echo.Map{"error": "missing user or password"})
 	}
 
-	if pass != "1234" {
+	if cred.Password != "1234" {
 		return c.JSON(http.StatusUnauthorized, echo.Map{"error": "invalid credentials"})
 	}
 
 	rooms := []string{"default", "vip"}
-	access, _ := auth.GenerateAccessToken(user, rooms)
-	refresh, _ := auth.GenerateRefreshToken(user)
+	access, err := auth.GenerateAccessToken(cred.User, rooms)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": "failed to generate access token"})
+	}
+	refresh, err := auth.GenerateRefreshToken(cred.User)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": "failed to generate refresh token"})
+	}
 
 	return c.JSON(http.StatusOK, echo.Map{
 		"access_token":  access,
@@ -48,7 +49,10 @@ func Refresh(c echo.Context) error {
 	}
 
 	rooms := []string{"default", "vip"}
-	newAccess, _ := auth.GenerateAccessToken(user, rooms)
+	newAccess, err := auth.GenerateAccessToken(user, rooms)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": "failed to generate access token"})
+	}
 
 	return c.JSON(http.StatusOK, echo.Map{"access_token": newAccess})
 }

@@ -54,19 +54,20 @@ func (cw *ClientWrapper) SaveMessage(ctx context.Context, roomID string, msg dto
 		return err
 	}
 
-	// LPUSH adiciona no início da lista
-	if err := cw.Client.LPush(ctx, key, payload).Err(); err != nil {
+	err = cw.Client.LPush(ctx, key, payload).Err()
+	if err != nil {
 		cw.Logger.Error("Erro ao salvar mensagem no Redis", zap.String("room", roomID), zap.Error(err))
 		return err
 	}
 
-	// LTRIM mantém apenas as últimas `maxMessages`
-	if err := cw.Client.LTrim(ctx, key, 0, int64(maxMessages-1)).Err(); err != nil {
+	err = cw.Client.LTrim(ctx, key, 0, int64(maxMessages-1)).Err()
+	if err != nil {
 		cw.Logger.Error("Erro ao limitar mensagens no Redis", zap.String("room", roomID), zap.Error(err))
 		return err
 	}
 
-	if err := cw.Client.Expire(ctx, key, 6*time.Hour).Err(); err != nil {
+	err = cw.Client.Expire(ctx, key, 6*time.Hour).Err()
+	if err != nil {
 		cw.Logger.Error("Erro ao inserir expiracao no redis", zap.String("room", roomID), zap.Error(err))
 		return err
 	}
@@ -83,17 +84,24 @@ func (cw *ClientWrapper) GetMessages(ctx context.Context, roomID string, limit i
 		return nil, err
 	}
 
-	messages := make([]dto.Message, 0, len(vals))
-	for i := len(vals) - 1; i >= 0; i-- {
-		var msg dto.Message
-		if err := json.Unmarshal([]byte(vals[i]), &msg); err != nil {
-			cw.Logger.Warn("Falha ao desserializar mensagem", zap.Error(err))
-			continue
-		}
-		messages = append(messages, msg)
-	}
+	n := len(vals)
+	tmp := make([]dto.Message, 0, n)
 
-	return messages, nil
+// Unmarshal in order and reverse at the end for efficiency and clarity
+for i := 0; i < n; i++ {
+    var msg dto.Message
+    if err := json.Unmarshal([]byte(vals[i]), &msg); err != nil {
+        cw.Logger.Warn("Falha ao desserializar mensagem", zap.Error(err))
+        continue
+    }
+    tmp = append(tmp, msg)
+}
+// Reverse slice to return messages in correct order (oldest to newest)
+messages := make([]dto.Message, 0, len(tmp))
+for i := len(tmp) - 1; i >= 0; i-- {
+    messages = append(messages, tmp[i])
+}
+return messages, nil
 }
 
 // SaveUnread adiciona uma mensagem privada à lista de mensagens não lidas do usuário
@@ -106,12 +114,14 @@ func (cw *ClientWrapper) SaveUnread(ctx context.Context, user string, msg dto.Me
 		return err
 	}
 
-	if err := cw.Client.LPush(ctx, key, payload).Err(); err != nil {
+	err = cw.Client.LPush(ctx, key, payload).Err()
+	if err != nil {
 		cw.Logger.Error("Erro ao salvar mensagem não lida no Redis", zap.String("user", user), zap.Error(err))
 		return err
 	}
 
-	if err := cw.Client.Expire(ctx, key, 24*time.Hour).Err(); err != nil {
+	err = cw.Client.Expire(ctx, key, 24*time.Hour).Err()
+	if err != nil {
 		cw.Logger.Error("Erro ao inserir expiracao para mensagens não lidas", zap.String("user", user), zap.Error(err))
 		return err
 	}
@@ -129,23 +139,28 @@ func (cw *ClientWrapper) GetUnreadMessages(ctx context.Context, user string) ([]
 		return nil, err
 	}
 
-	messages := make([]dto.Message, 0, len(vals))
-	for i := len(vals) - 1; i >= 0; i-- { // envia na ordem correta
-		var msg dto.Message
-		if err := json.Unmarshal([]byte(vals[i]), &msg); err != nil {
-			cw.Logger.Warn("Falha ao desserializar mensagem não lida", zap.Error(err))
-			continue
-		}
-		messages = append(messages, msg)
-	}
-
-	return messages, nil
+	n := len(vals)
+	tmp := make([]dto.Message, 0, n)
+for i := 0; i < n; i++ {
+    var msg dto.Message
+    if err := json.Unmarshal([]byte(vals[i]), &msg); err != nil {
+        cw.Logger.Warn("Falha ao desserializar mensagem não lida", zap.Error(err))
+        continue
+    }
+    tmp = append(tmp, msg)
+}
+messages := make([]dto.Message, 0, len(tmp))
+for i := len(tmp) - 1; i >= 0; i-- {
+    messages = append(messages, tmp[i])
+}
+return messages, nil
 }
 
 // ClearUnread remove todas as mensagens não lidas do usuário
 func (cw *ClientWrapper) ClearUnread(ctx context.Context, user string) error {
 	key := fmt.Sprintf("unread:%s", user)
-	if err := cw.Client.Del(ctx, key).Err(); err != nil {
+	err := cw.Client.Del(ctx, key).Err()
+	if err != nil {
 		cw.Logger.Error("Erro ao limpar mensagens não lidas do Redis", zap.String("user", user), zap.Error(err))
 		return err
 	}

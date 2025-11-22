@@ -10,7 +10,7 @@ type Message struct {
 	Target    string    `json:"target,omitempty"`
 }
 
-type Incoming struct {
+type IncomingMessage struct {
 	Content string `json:"content"`
 	Target  string `json:"target"`
 }

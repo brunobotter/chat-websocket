@@ -1,6 +1,8 @@
 {
-    "gopls.env": {
-        "GOFLAGS": "-tags=test"
+    "gopls": {
+        "env": {
+            "GOFLAGS": "-tags=test"
+        }
     },
     "makefile.configureOnOpen": false
 }

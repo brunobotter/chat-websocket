@@ -5,7 +5,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-var Logger *zap.Logger
+var logger *zap.Logger
 
 func Init() {
 	var err error
@@ -17,7 +17,7 @@ func Init() {
 	cfg.EncoderConfig.CallerKey = "caller"
 	cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 	cfg.EncoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
-	Logger, err = cfg.Build()
+	logger, err = cfg.Build()
 
 	if err != nil {
 		panic(err)
@@ -25,5 +25,5 @@ func Init() {
 }
 
 func L() *zap.Logger {
-	return Logger
+	return logger
 }

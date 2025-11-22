@@ -16,11 +16,12 @@ type Deps struct {
 }
 
 func Init() *Deps {
-	logger.L().Info("Inicializando configuração")
+	loggerInstance := logger.L()
+	loggerInstance.Info("Inicializando configuração")
 
 	cfg, err := read()
 	if err != nil {
-		logger.L().Error("Erro ao ler config", zap.Error(err))
+		loggerInstance.Error("Erro ao ler config", zap.Error(err))
 	}
 
 	redisCfg := redis.RedisConfig{
@@ -34,34 +35,32 @@ func Init() *Deps {
 		MinIdleConns: cfg.Redis.MinIdleConns,
 	}
 
-	redisClient, err := redis.NewClient(redisCfg, logger.L())
+	redisClient, err := redis.NewClient(redisCfg, loggerInstance)
 	if err != nil {
-		logger.L().Error("Nao foi possivel conectar no Redis", zap.Error(err))
-
+		loggerInstance.Error("Nao foi possivel conectar no Redis", zap.Error(err))
 	}
 
-	deps := &Deps{
+	return &Deps{
 		Cfg:    cfg,
-		Logger: logger.L(),
+		Logger: loggerInstance,
 		Redis:  redisClient,
 	}
-	return deps
 }
 
 func read() (*Mapping, error) {
 	setupConfig()
-	err := viper.ReadInConfig()
-	if err != nil {
+
+	if err := viper.ReadInConfig(); err != nil {
 		logger.L().Error("Erro ao ler config", zap.Error(err))
 		return nil, err
 	}
 
-	config := Mapping{}
+	var config Mapping
 
-	err = viper.Unmarshal(&config)
-	if err != nil {
+	if err := viper.Unmarshal(&config); err != nil {
 		return nil, err
 	}
+
 	return &config, nil
 }
 

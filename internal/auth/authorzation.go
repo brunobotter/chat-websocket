@@ -31,7 +31,7 @@ func GenerateAccessToken(user string, rooms []string) (string, error) {
 		},
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &claims)
 	return token.SignedString(accessSecret)
 }
 
@@ -43,7 +43,7 @@ func GenerateRefreshToken(user string) (string, error) {
 		Issuer:    "chat-app",
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &claims)
 	return token.SignedString(refreshSecret)
 }
 
@@ -55,10 +55,12 @@ func ValidateAccessToken(tokenStr string) (*Claims, error) {
 		return nil, err
 	}
 
-	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
-		return claims, nil
+	claims, ok := token.Claims.(*Claims)
+	if !ok || !token.Valid {
+		return nil, errors.New("invalid token")
 	}
-	return nil, errors.New("invalid token")
+
+	return claims, nil
 }
 
 func ValidateRefreshToken(tokenStr string) (string, error) {
@@ -69,8 +71,10 @@ func ValidateRefreshToken(tokenStr string) (string, error) {
 		return "", err
 	}
 
-	if claims, ok := token.Claims.(*jwt.RegisteredClaims); ok && token.Valid {
-		return claims.Subject, nil
+	claims, ok := token.Claims.(*jwt.RegisteredClaims)
+	if !ok || !token.Valid {
+		return "", errors.New("invalid refresh token")
 	}
-	return "", errors.New("invalid refresh token")
+
+	return claims.Subject, nil
 }
