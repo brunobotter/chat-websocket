@@ -45,3 +45,12 @@ services:
       - app1
       - app2
       - app3
+
+  tests:
+    build: .
+    container_name: tests
+    command: ["pytest", "tests/"]
+    depends_on:
+      - app1
+      - app2
+      - app3

@@ -8,8 +8,8 @@
             "mode": "auto",
             "program": "${workspaceRoot}/cmd/server/main.go",
             "dlvFlags": ["--check-go-version=false"],
-                  "env": {
-                "PROFILE": "dev" // ou "prod", "test", etc.
+            "env": {
+                "PROFILE": "test"
             }
         },
         {
@@ -19,8 +19,8 @@
             "mode": "auto",
             "program": "${workspaceRoot}/cmd/server/main.go",
             "dlvFlags": ["--check-go-version=false"],
-                  "env": {
-                "PROFILE": "dev" // ou "prod", "test", etc.
+            "env": {
+                "PROFILE": "test"
             }
         },
         {
@@ -30,8 +30,8 @@
             "mode": "auto",
             "program": "${workspaceRoot}/cmd/server/main.go",
             "dlvFlags": ["--check-go-version=false"],
-                  "env": {
-                "PROFILE": "dev" // ou "prod", "test", etc.
+            "env": {
+                "PROFILE": "test"
             }
         }
     ]

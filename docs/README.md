@@ -151,12 +151,26 @@ A aplicação estará disponível em `http://localhost:8000`.
 
 O projeto está em evolução para incluir testes automatizados.
 
-### Executar Todos os Testes
-
+### Executar Todos os Testes Unitários e Integrados
+Para rodar todos os testes (unitários e integrados), execute:
 ```bash
 go test ./...
 ```
-
+### Executar Testes Unitários Específicos (exemplo)
+Para rodar apenas um arquivo ou pacote específico:
+```bash
+go test ./internal/handler -run ^TestNomeDoTeste$
+```
+### Escrevendo Testes Unitários (exemplo básico)
+Crie arquivos terminando com `_test.go` e funções iniciando com `Test`:
+```go
+func TestMinhaFuncao(t *testing.T) {
+    resultado := MinhaFuncao()
+    if resultado != "esperado" {
+        t.Errorf("resultado inesperado: %v", resultado)
+    }
+}
+```
 *Testes unitários e integrados estão sendo implementados gradualmente.*
 
 ---

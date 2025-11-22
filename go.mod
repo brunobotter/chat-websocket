@@ -37,4 +37,5 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/sys v0.37.0 // indirect
 	golang.org/x/text v0.30.0 // indirect
+	github.com/stretchr/testify v1.8.4 // added for unit testing
 )

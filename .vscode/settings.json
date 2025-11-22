@@ -2,5 +2,7 @@
     "gopls.env": {
         "GOFLAGS": "-tags=test"
     },
-    "makefile.configureOnOpen": false
+    "makefile.configureOnOpen": false,
+    "python.testing.unittestEnabled": true,
+    "python.testing.pytestEnabled": false
 }
