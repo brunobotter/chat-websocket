@@ -8,16 +8,27 @@ import (
 	"go.uber.org/zap"
 )
 
+type IHub interface {
+	Run()
+}
+
+type IChatStore interface {
+	GetUnreadMessages(ctx context.Context, user string) ([]dto.Message, error)
+	ClearUnread(ctx context.Context, user string) error
+	SaveUnread(ctx context.Context, user string, msg dto.Message) error
+	SaveMessage(ctx context.Context, roomID string, msg dto.Message, limit int) error
+}
+
 type Hub struct {
 	Rooms      map[string]map[*Client]bool
 	Broadcast  chan dto.Message
 	Register   chan *Client
 	Unregister chan *Client
 	logger     *zap.Logger
-	ChatStore  ChatStore
+	ChatStore  IChatStore
 }
 
-func NewHub(logger *zap.Logger, chatStore ChatStore) *Hub {
+func NewHub(logger *zap.Logger, chatStore IChatStore) IHub {
 	return &Hub{
 		Rooms:      make(map[string]map[*Client]bool),
 		Broadcast:  make(chan dto.Message),
@@ -57,52 +68,52 @@ func (h *Hub) Run() {
 					_ = h.ChatStore.ClearUnread(ctx, c.User)
 				}(client)
 			}
-			//deregistro de clientes
+		//deregistro de clientes
 		case client := <-h.Unregister:
 			if clients, ok := h.Rooms[client.RoomID]; ok {
 				delete(clients, client)
 				close(client.Send)
 				if len(clients) == 0 {
-					delete(h.Rooms, client.RoomID)
-				}
-			}
-			//recebimento de mensagens
-		case msg := <-h.Broadcast:
-			//mensagens privadas
-			if msg.Target != "" {
-				for _, clients := range h.Rooms {
-					for client := range clients {
-						if client.User == msg.Target {
-							select {
-							case client.Send <- []byte(msg.Content):
-							default:
-								close(client.Send)
-								delete(clients, client)
-							}
-						}
-					}
-				}
-				// Salva mensagem como não lida no Redis
-				if h.ChatStore != nil {
-					_ = h.ChatStore.SaveUnread(ctx, msg.Target, msg)
-				}
-				continue
-			}
-			//broadcast por sala
-			if clients, ok := h.Rooms[msg.RoomID]; ok {
-				for client := range clients {
-					select {
-					case client.Send <- []byte(msg.Content):
-					default:
-						delete(clients, client)
-						close(client.Send)
-					}
-				}
-			}
-			// Salva a mensagem da sala no Redis
-			if h.ChatStore != nil {
-				_ = h.ChatStore.SaveMessage(ctx, msg.RoomID, msg, 50) // exemplo com limite de 50
-			}
-		}
-	}
+					do delete(h.Rooms, client.RoomID)
+            }
+        }
+        //recebimento de mensagens
+        case msg := <-h.Broadcast:
+            //mensagens privadas
+            if msg.Target != "" {
+                for _, clients := range h.Rooms {
+                    for client := range clients {
+                        if client.User == msg.Target {
+                            select {
+                            case client.Send <- []byte(msg.Content):
+                            default:
+                                close(client.Send)
+                                delete(clients, client)
+                            }
+                        }
+                    }
+                }
+                // Salva mensagem como não lida no Redis
+                if h.ChatStore != nil {
+                    _ = h.ChatStore.SaveUnread(ctx, msg.Target, msg)
+                }
+                continue
+            }
+            //broadcast por sala
+            if clients, ok := h.Rooms[msg.RoomID]; ok {
+                for client := range clients {
+                    select {
+                    case client.Send <- []byte(msg.Content):
+                    default:
+                        delete(clients, client)
+                        close(client.Send)
+                    }
+                }
+            }
+            // Salva a mensagem da sala no Redis
+            if h.ChatStore != nil {
+                _ = h.ChatStore.SaveMessage(ctx, msg.RoomID, msg, 50) // exemplo com limite de 50
+            }
+        }
+    }
 }

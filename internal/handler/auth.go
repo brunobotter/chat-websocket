@@ -9,8 +9,22 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func Login(c echo.Context) error {
+type AuthService interface {
+	GenerateAccessToken(user string, rooms []string) (string, error)
+	GenerateRefreshToken(user string) (string, error)
+	ValidateAccessToken(token string) (string, error)
+	ValidateRefreshToken(token string) (string, error)
+}
 
+type AuthHandler struct {
+	AuthSvc AuthService
+}
+
+func NewAuthHandler(authSvc AuthService) *AuthHandler {
+	return &AuthHandler{AuthSvc: authSvc}
+}
+
+func (h *AuthHandler) Login(c echo.Context) error {
 	var cred dto.Auth
 
 	if err := c.Bind(&cred); err != nil {
@@ -29,8 +43,8 @@ func Login(c echo.Context) error {
 	}
 
 	rooms := []string{"default", "vip"}
-	access, _ := auth.GenerateAccessToken(user, rooms)
-	refresh, _ := auth.GenerateRefreshToken(user)
+	access, _ := h.AuthSvc.GenerateAccessToken(user, rooms)
+	refresh, _ := h.AuthSvc.GenerateRefreshToken(user)
 
 	return c.JSON(http.StatusOK, echo.Map{
 		"access_token":  access,
@@ -38,22 +52,22 @@ func Login(c echo.Context) error {
 	})
 }
 
-func Refresh(c echo.Context) error {
+func (h *AuthHandler) Refresh(c echo.Context) error {
 	authHeader := c.Request().Header.Get("Authorization")
 	token := strings.TrimPrefix(authHeader, "Bearer ")
 
-	user, err := auth.ValidateRefreshToken(token)
+	user, err := h.AuthSvc.ValidateRefreshToken(token)
 	if err != nil {
 		return c.JSON(http.StatusUnauthorized, echo.Map{"error": "invalid refresh token"})
 	}
 
 	rooms := []string{"default", "vip"}
-	newAccess, _ := auth.GenerateAccessToken(user, rooms)
+	newAccess, _ := h.AuthSvc.GenerateAccessToken(user, rooms)
 
 	return c.JSON(http.StatusOK, echo.Map{"access_token": newAccess})
 }
 
-func JWTMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+func (h *AuthHandler) JWTMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		authHeader := c.Request().Header.Get("Authorization")
 		if authHeader == "" {
@@ -61,11 +75,29 @@ func JWTMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 
 		token := strings.TrimPrefix(authHeader, "Bearer ")
-		_, err := auth.ValidateAccessToken(token)
+		_, err := h.AuthSvc.ValidateAccessToken(token)
 		if err != nil {
 			return c.JSON(http.StatusUnauthorized, echo.Map{"error": "invalid token"})
 		}
 
 		return next(c)
 	}
+}
+
+// Default implementation using the existing auth package
+var DefaultAuthHandler = NewAuthHandler(authImpl{})
+
+type authImpl struct{}
+
+func (a authImpl) GenerateAccessToken(user string, rooms []string) (string, error) {
+	return auth.GenerateAccessToken(user, rooms)
+}
+func (a authImpl) GenerateRefreshToken(user string) (string, error) {
+	return auth.GenerateRefreshToken(user)
+}
+func (a authImpl) ValidateAccessToken(token string) (string, error) {
+	return auth.ValidateAccessToken(token)
+}
+func (a authImpl) ValidateRefreshToken(token string) (string, error) {
+	return auth.ValidateRefreshToken(token)
 }

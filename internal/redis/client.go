@@ -8,8 +8,13 @@ import (
 	"go.uber.org/zap"
 )
 
+type RedisClient interface {
+	Ping(ctx context.Context) *redis.StatusCmd
+	Close() error
+}
+
 type ClientWrapper struct {
-	Client *redis.Client
+	Client RedisClient
 	Logger *zap.Logger
 }
 

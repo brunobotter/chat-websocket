@@ -1,8 +1,10 @@
 server:
+  interface: "0.0.0.0"
   port: 8080
   host: "localhost"
-  
+
 redis:
+  interface: "tcp"
   addr: "localhost:6379"
   password: ""
   db: 0

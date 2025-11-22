@@ -15,12 +15,24 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
+type WebSocketConn interface {
+	ReadMessage() (messageType int, p []byte, err error)
+	WriteMessage(messageType int, data []byte) error
+	Close() error
+}
+
 type Client struct {
-	Conn   *websocket.Conn
+	Conn   WebSocketConn
 	Send   chan []byte
 	Hub    *Hub
 	RoomID string
 	User   string
+}
+
+type ChatStore interface {
+	GetMessages(ctx context.Context, room string, limit int) ([]dto.Message, error)
+	PublishMessage(ctx context.Context, channel string, msg dto.Message) error
+	SaveMessage(ctx context.Context, room string, msg dto.Message, limit int) error
 }
 
 func HandleConnections(hub *Hub, w http.ResponseWriter, r *http.Request, store ChatStore) {

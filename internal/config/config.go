@@ -9,43 +9,73 @@ import (
 	"go.uber.org/zap"
 )
 
+type Config interface {
+	GetRedisConfig() redis.RedisConfig
+}
+
+type Logger interface {
+	Info(msg string, fields ...zap.Field)
+	Error(msg string, fields ...zap.Field)
+}
+
+type RedisClient interface {
+	// Adicione métodos relevantes que você usa do redis.ClientWrapper
+}
+
 type Deps struct {
-	Cfg    *Mapping
-	Logger *zap.Logger
-	Redis  *redis.ClientWrapper
+	Cfg    Config
+	Logger Logger
+	Redis  RedisClient
 }
 
 func Init() *Deps {
-	logger.L().Info("Inicializando configuração")
+	log := logger.L()
+	log.Info("Inicializando configuração")
 
 	cfg, err := read()
 	if err != nil {
-		logger.L().Error("Erro ao ler config", zap.Error(err))
+		log.Error("Erro ao ler config", zap.Error(err))
 	}
 
-	redisCfg := redis.RedisConfig{
-		Addr:         cfg.Redis.Addr,
-		Password:     cfg.Redis.Password,
-		DB:           cfg.Redis.DB,
-		DialTimeout:  cfg.Redis.DialTimeout,
-		ReadTimeout:  cfg.Redis.ReadTimeout,
-		WriteTimeout: cfg.Redis.WriteTimeout,
-		PoolSize:     cfg.Redis.PoolSize,
-		MinIdleConns: cfg.Redis.MinIdleConns,
-	}
+	redisCfg := cfg.GetRedisConfig()
 
-	redisClient, err := redis.NewClient(redisCfg, logger.L())
+	redisClient, err := redis.NewClient(redisCfg, log)
 	if err != nil {
-		logger.L().Error("Nao foi possivel conectar no Redis", zap.Error(err))
-
+		log.Error("Nao foi possivel conectar no Redis", zap.Error(err))
 	}
 
 	deps := &Deps{
 		Cfg:    cfg,
-		Logger: logger.L(),
+		Logger: log,
 		Redis:  redisClient,
 	}
 	return deps
+}
+
+type Mapping struct {
+	Redis struct {
+		Addr         string
+		Password     string
+		DB           int
+		DialTimeout  int
+		ReadTimeout  int
+		WriteTimeout int
+		PoolSize     int
+		MinIdleConns int
+	}
+}
+
+func (m *Mapping) GetRedisConfig() redis.RedisConfig {
+	return redis.RedisConfig{
+		Addr:         m.Redis.Addr,
+		Password:     m.Redis.Password,
+		DB:           m.Redis.DB,
+		DialTimeout:  m.Redis.DialTimeout,
+		ReadTimeout:  m.Redis.ReadTimeout,
+		WriteTimeout: m.Redis.WriteTimeout,
+		PoolSize:     m.Redis.PoolSize,
+		MinIdleConns: m.Redis.MinIdleConns,
+	}
 }
 
 func read() (*Mapping, error) {

@@ -8,6 +8,27 @@ import (
 	"go.uber.org/zap"
 )
 
+// RedisPublisher define a interface para publicação de mensagens no Redis
+// Facilita testes e desacoplamento.
+type RedisPublisher interface {
+	PublishMessage(ctx context.Context, channel string, msg dto.Message) error
+}
+
+// RedisClient define a interface mínima do cliente Redis usado para Publish.
+type RedisClient interface {
+	Publish(ctx context.Context, channel string, message interface{}) RedisCmdable
+}
+
+type RedisCmdable interface {
+	Err() error
+}
+
+// ClientWrapper implementa RedisPublisher
+type ClientWrapper struct {
+	Client RedisClient
+	Logger *zap.Logger
+}
+
 func (cw *ClientWrapper) PublishMessage(ctx context.Context, channel string, msg dto.Message) error {
 	payload, err := json.Marshal(msg)
 	if err != nil {

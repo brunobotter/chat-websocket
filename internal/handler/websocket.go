@@ -6,9 +6,23 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func WebSocketHandler(cfg *config.Deps, hub *websocket.Hub) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		websocket.HandleConnections(hub, c.Response().Writer, c.Request(), cfg.Redis)
-		return nil
+type WebSocketHandlerInterface interface {
+	HandleWebSocket(c echo.Context) error
+}
+
+type webSocketHandler struct {
+	cfg *config.Deps
+	hub *websocket.Hub
+}
+
+func NewWebSocketHandler(cfg *config.Deps, hub *websocket.Hub) WebSocketHandlerInterface {
+	return &webSocketHandler{
+		cfg: cfg,
+		hub: hub,
 	}
+}
+
+func (h *webSocketHandler) HandleWebSocket(c echo.Context) error {
+	websocket.HandleConnections(h.hub, c.Response().Writer, c.Request(), h.cfg.Redis)
+	return nil
 }

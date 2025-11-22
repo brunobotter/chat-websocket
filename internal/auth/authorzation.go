@@ -20,7 +20,20 @@ var (
 	RefreshTTL    = 24 * time.Hour
 )
 
-func GenerateAccessToken(user string, rooms []string) (string, error) {
+type TokenManager interface {
+	GenerateAccessToken(user string, rooms []string) (string, error)
+	GenerateRefreshToken(user string) (string, error)
+	ValidateAccessToken(tokenStr string) (*Claims, error)
+	ValidateRefreshToken(tokenStr string) (string, error)
+}
+
+type JWTTokenManager struct{}
+
+func NewJWTTokenManager() TokenManager {
+	return &JWTTokenManager{}
+}
+
+func (j *JWTTokenManager) GenerateAccessToken(user string, rooms []string) (string, error) {
 	claims := Claims{
 		User:  user,
 		Rooms: rooms,
@@ -35,7 +48,7 @@ func GenerateAccessToken(user string, rooms []string) (string, error) {
 	return token.SignedString(accessSecret)
 }
 
-func GenerateRefreshToken(user string) (string, error) {
+func (j *JWTTokenManager) GenerateRefreshToken(user string) (string, error) {
 	claims := jwt.RegisteredClaims{
 		Subject:   user,
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(RefreshTTL)),
@@ -47,7 +60,7 @@ func GenerateRefreshToken(user string) (string, error) {
 	return token.SignedString(refreshSecret)
 }
 
-func ValidateAccessToken(tokenStr string) (*Claims, error) {
+func (j *JWTTokenManager) ValidateAccessToken(tokenStr string) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (interface{}, error) {
 		return accessSecret, nil
 	})
@@ -61,7 +74,7 @@ func ValidateAccessToken(tokenStr string) (*Claims, error) {
 	return nil, errors.New("invalid token")
 }
 
-func ValidateRefreshToken(tokenStr string) (string, error) {
+func (j *JWTTokenManager) ValidateRefreshToken(tokenStr string) (string, error) {
 	token, err := jwt.ParseWithClaims(tokenStr, &jwt.RegisteredClaims{}, func(t *jwt.Token) (interface{}, error) {
 		return refreshSecret, nil
 	})

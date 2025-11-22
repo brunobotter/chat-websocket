@@ -6,6 +6,7 @@ import (
 	"github.com/brunobotter/chat-websocket/internal/dto"
 )
 
+// ChatStore defines the interface for chat message storage and retrieval operations.
 type ChatStore interface {
 	PublishMessage(ctx context.Context, channel string, msg dto.Message) error
 	SaveMessage(ctx context.Context, roomID string, msg dto.Message, limit int) error
