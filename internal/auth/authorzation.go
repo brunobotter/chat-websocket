@@ -7,6 +7,14 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+// TokenManager defines the interface for token operations, improving testability and flexibility.
+type TokenManager interface {
+	GenerateAccessToken(user string, rooms []string) (string, error)
+	GenerateRefreshToken(user string) (string, error)
+	ValidateAccessToken(tokenStr string) (*Claims, error)
+	ValidateRefreshToken(tokenStr string) (string, error)
+}
+
 type Claims struct {
 	User  string   `json:"user"`
 	Rooms []string `json:"rooms"`
@@ -20,7 +28,13 @@ var (
 	RefreshTTL    = 24 * time.Hour
 )
 
-func GenerateAccessToken(user string, rooms []string) (string, error) {
+type JWTManager struct{}
+
+func NewJWTManager() *JWTManager {
+	return &JWTManager{}
+}
+
+func (j *JWTManager) GenerateAccessToken(user string, rooms []string) (string, error) {
 	claims := Claims{
 		User:  user,
 		Rooms: rooms,
@@ -35,7 +49,7 @@ func GenerateAccessToken(user string, rooms []string) (string, error) {
 	return token.SignedString(accessSecret)
 }
 
-func GenerateRefreshToken(user string) (string, error) {
+func (j *JWTManager) GenerateRefreshToken(user string) (string, error) {
 	claims := jwt.RegisteredClaims{
 		Subject:   user,
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(RefreshTTL)),
@@ -47,7 +61,7 @@ func GenerateRefreshToken(user string) (string, error) {
 	return token.SignedString(refreshSecret)
 }
 
-func ValidateAccessToken(tokenStr string) (*Claims, error) {
+func (j *JWTManager) ValidateAccessToken(tokenStr string) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (interface{}, error) {
 		return accessSecret, nil
 	})
@@ -61,7 +75,7 @@ func ValidateAccessToken(tokenStr string) (*Claims, error) {
 	return nil, errors.New("invalid token")
 }
 
-func ValidateRefreshToken(tokenStr string) (string, error) {
+func (j *JWTManager) ValidateRefreshToken(tokenStr string) (string, error) {
 	token, err := jwt.ParseWithClaims(tokenStr, &jwt.RegisteredClaims{}, func(t *jwt.Token) (interface{}, error) {
 		return refreshSecret, nil
 	})

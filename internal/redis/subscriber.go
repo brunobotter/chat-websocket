@@ -11,6 +11,46 @@ import (
 	"go.uber.org/zap"
 )
 
+// RedisClient defines the interface for Redis operations used by ClientWrapper.
+type RedisClient interface {
+	PSubscribe(ctx context.Context, pattern string) PubSub
+	LPush(ctx context.Context, key string, values ...interface{}) Cmdable
+	LTrim(ctx context.Context, key string, start, stop int64) Cmdable
+	Expire(ctx context.Context, key string, expiration time.Duration) Cmdable
+	LRange(ctx context.Context, key string, start, stop int64) StringSliceCmdable
+	Del(ctx context.Context, keys ...string) Cmdable
+}
+
+type PubSub interface {
+	Channel() <-chan *Message
+	Close() error
+}
+
+type Message struct {
+	Channel string
+	Payload string
+}
+
+type Cmdable interface {
+	Err() error
+}
+
+type StringSliceCmdable interface {
+	Result() ([]string, error)
+}
+
+type Logger interface {
+	Info(msg string, fields ...zap.Field)
+	Warn(msg string, fields ...zap.Field)
+	Error(msg string, fields ...zap.Field)
+	Debug(msg string, fields ...zap.Field)
+}
+
+type ClientWrapper struct {
+	Client RedisClient
+	Logger Logger
+}
+
 func (cw *ClientWrapper) SubscribeAllRooms(ctx context.Context, hub *websocket.Hub) {
 	cw.Logger.Info("Iniciando subscriber genérico Redis para todas as salas")
 	pubsub := cw.Client.PSubscribe(ctx, "chat:*")
@@ -54,13 +94,11 @@ func (cw *ClientWrapper) SaveMessage(ctx context.Context, roomID string, msg dto
 		return err
 	}
 
-	// LPUSH adiciona no início da lista
 	if err := cw.Client.LPush(ctx, key, payload).Err(); err != nil {
 		cw.Logger.Error("Erro ao salvar mensagem no Redis", zap.String("room", roomID), zap.Error(err))
 		return err
 	}
 
-	// LTRIM mantém apenas as últimas `maxMessages`
 	if err := cw.Client.LTrim(ctx, key, 0, int64(maxMessages-1)).Err(); err != nil {
 		cw.Logger.Error("Erro ao limitar mensagens no Redis", zap.String("room", roomID), zap.Error(err))
 		return err
@@ -96,7 +134,6 @@ func (cw *ClientWrapper) GetMessages(ctx context.Context, roomID string, limit i
 	return messages, nil
 }
 
-// SaveUnread adiciona uma mensagem privada à lista de mensagens não lidas do usuário
 func (cw *ClientWrapper) SaveUnread(ctx context.Context, user string, msg dto.Message) error {
 	key := fmt.Sprintf("unread:%s", user)
 
@@ -119,7 +156,6 @@ func (cw *ClientWrapper) SaveUnread(ctx context.Context, user string, msg dto.Me
 	return nil
 }
 
-// GetUnreadMessages retorna todas as mensagens não lidas do usuário
 func (cw *ClientWrapper) GetUnreadMessages(ctx context.Context, user string) ([]dto.Message, error) {
 	key := fmt.Sprintf("unread:%s", user)
 
@@ -142,7 +178,6 @@ func (cw *ClientWrapper) GetUnreadMessages(ctx context.Context, user string) ([]
 	return messages, nil
 }
 
-// ClearUnread remove todas as mensagens não lidas do usuário
 func (cw *ClientWrapper) ClearUnread(ctx context.Context, user string) error {
 	key := fmt.Sprintf("unread:%s", user)
 	if err := cw.Client.Del(ctx, key).Err(); err != nil {

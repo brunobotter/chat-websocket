@@ -9,10 +9,27 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func Login(c echo.Context) error {
+// AuthService defines the interface for authentication operations
+// This allows for easier mocking and testing
+//go:generate mockgen -destination=../../mocks/mock_auth_service.go -package=mocks github.com/brunobotter/chat-websocket/internal/handler AuthService
 
+type AuthService interface {
+	GenerateAccessToken(user string, rooms []string) (string, error)
+	GenerateRefreshToken(user string) (string, error)
+	ValidateAccessToken(token string) (string, error)
+	ValidateRefreshToken(token string) (string, error)
+}
+
+type AuthHandler struct {
+	AuthSvc AuthService
+}
+
+func NewAuthHandler(authSvc AuthService) *AuthHandler {
+	return &AuthHandler{AuthSvc: authSvc}
+}
+
+func (h *AuthHandler) Login(c echo.Context) error {
 	var cred dto.Auth
-
 	if err := c.Bind(&cred); err != nil {
 		return c.JSON(http.StatusBadRequest, echo.Map{"error": "invalid request"})
 	}
@@ -29,8 +46,14 @@ func Login(c echo.Context) error {
 	}
 
 	rooms := []string{"default", "vip"}
-	access, _ := auth.GenerateAccessToken(user, rooms)
-	refresh, _ := auth.GenerateRefreshToken(user)
+	access, err := h.AuthSvc.GenerateAccessToken(user, rooms)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": "failed to generate access token"})
+	}
+	refresh, err := h.AuthSvc.GenerateRefreshToken(user)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": "failed to generate refresh token"})
+	}
 
 	return c.JSON(http.StatusOK, echo.Map{
 		"access_token":  access,
@@ -38,22 +61,25 @@ func Login(c echo.Context) error {
 	})
 }
 
-func Refresh(c echo.Context) error {
+func (h *AuthHandler) Refresh(c echo.Context) error {
 	authHeader := c.Request().Header.Get("Authorization")
 	token := strings.TrimPrefix(authHeader, "Bearer ")
 
-	user, err := auth.ValidateRefreshToken(token)
+	user, err := h.AuthSvc.ValidateRefreshToken(token)
 	if err != nil {
 		return c.JSON(http.StatusUnauthorized, echo.Map{"error": "invalid refresh token"})
 	}
 
 	rooms := []string{"default", "vip"}
-	newAccess, _ := auth.GenerateAccessToken(user, rooms)
+	newAccess, err := h.AuthSvc.GenerateAccessToken(user, rooms)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": "failed to generate access token"})
+	}
 
 	return c.JSON(http.StatusOK, echo.Map{"access_token": newAccess})
 }
 
-func JWTMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+func (h *AuthHandler) JWTMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		authHeader := c.Request().Header.Get("Authorization")
 		if authHeader == "" {
@@ -61,7 +87,7 @@ func JWTMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 
 		token := strings.TrimPrefix(authHeader, "Bearer ")
-		_, err := auth.ValidateAccessToken(token)
+		_, err := h.AuthSvc.ValidateAccessToken(token)
 		if err != nil {
 			return c.JSON(http.StatusUnauthorized, echo.Map{"error": "invalid token"})
 		}

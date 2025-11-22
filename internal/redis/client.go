@@ -8,8 +8,13 @@ import (
 	"go.uber.org/zap"
 )
 
+type RedisClient interface {
+	Ping(ctx context.Context) *redis.StatusCmd
+	Close() error
+}
+
 type ClientWrapper struct {
-	Client *redis.Client
+	Client RedisClient
 	Logger *zap.Logger
 }
 
@@ -43,7 +48,7 @@ func NewClient(cfg RedisConfig, logger *zap.Logger) (*ClientWrapper, error) {
 	defer cancel()
 
 	if err := rdb.Ping(ctx).Err(); err != nil {
-		logger.Fatal("Falha no ping ao Redis", zap.Error(err))
+		logger.Error("Falha no ping ao Redis", zap.Error(err))
 		_ = rdb.Close()
 		return nil, err
 	}

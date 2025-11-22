@@ -8,6 +8,17 @@ import (
 	"go.uber.org/zap"
 )
 
+// RedisPublisher define interface para publicação de mensagens no Redis
+// Facilita testes unitários e mocking
+//go:generate mockgen -destination=../mocks/mock_redis_publisher.go -package=mocks github.com/brunobotter/chat-websocket/internal/redis RedisPublisher
+// Interface priorizada para facilitar testes e desacoplamento
+// Pode ser expandida para outros métodos se necessário
+
+type RedisPublisher interface {
+	PublishMessage(ctx context.Context, channel string, msg dto.Message) error
+}
+
+// ClientWrapper implementa RedisPublisher
 func (cw *ClientWrapper) PublishMessage(ctx context.Context, channel string, msg dto.Message) error {
 	payload, err := json.Marshal(msg)
 	if err != nil {

@@ -9,18 +9,28 @@ import (
 	"go.uber.org/zap"
 )
 
-type Deps struct {
-	Cfg    *Mapping
-	Logger *zap.Logger
-	Redis  *redis.ClientWrapper
+type Logger interface {
+	Info(msg string, fields ...zap.Field)
+	Error(msg string, fields ...zap.Field)
 }
 
-func Init() *Deps {
-	logger.L().Info("Inicializando configuração")
+type RedisClient interface {
+	// Adicione métodos relevantes usados no código, por exemplo:
+	Ping() error
+}
 
-	cfg, err := read()
+type Deps struct {
+	Cfg    *Mapping
+	Logger Logger
+	Redis  RedisClient
+}
+
+func Init(logger Logger) *Deps {
+	logger.Info("Inicializando configuração")
+
+	cfg, err := read(logger)
 	if err != nil {
-		logger.L().Error("Erro ao ler config", zap.Error(err))
+		logger.Error("Erro ao ler config", zap.Error(err))
 	}
 
 	redisCfg := redis.RedisConfig{
@@ -34,25 +44,24 @@ func Init() *Deps {
 		MinIdleConns: cfg.Redis.MinIdleConns,
 	}
 
-	redisClient, err := redis.NewClient(redisCfg, logger.L())
+	redisClient, err := redis.NewClient(redisCfg, logger)
 	if err != nil {
-		logger.L().Error("Nao foi possivel conectar no Redis", zap.Error(err))
-
+		logger.Error("Nao foi possivel conectar no Redis", zap.Error(err))
 	}
 
 	deps := &Deps{
 		Cfg:    cfg,
-		Logger: logger.L(),
+		Logger: logger,
 		Redis:  redisClient,
 	}
 	return deps
 }
 
-func read() (*Mapping, error) {
+func read(logger Logger) (*Mapping, error) {
 	setupConfig()
 	err := viper.ReadInConfig()
 	if err != nil {
-		logger.L().Error("Erro ao ler config", zap.Error(err))
+		logger.Error("Erro ao ler config", zap.Error(err))
 		return nil, err
 	}
 

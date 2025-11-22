@@ -5,7 +5,17 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-var Logger *zap.Logger
+// LoggerInterface define os métodos essenciais para facilitar testes e mocks.
+type LoggerInterface interface {
+	Debug(msg string, fields ...zap.Field)
+	Info(msg string, fields ...zap.Field)
+	Warn(msg string, fields ...zap.Field)
+	Error(msg string, fields ...zap.Field)
+	Fatal(msg string, fields ...zap.Field)
+	Sugar() *zap.SugaredLogger
+}
+
+var logger LoggerInterface
 
 func Init() {
 	var err error
@@ -17,13 +27,15 @@ func Init() {
 	cfg.EncoderConfig.CallerKey = "caller"
 	cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 	cfg.EncoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
-	Logger, err = cfg.Build()
+	l, err := cfg.Build()
 
 	if err != nil {
 		panic(err)
 	}
+	logger = l
 }
 
-func L() *zap.Logger {
-	return Logger
+// L retorna a instância do logger como interface para facilitar testes.
+func L() LoggerInterface {
+	return logger
 }
