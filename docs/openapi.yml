@@ -1,0 +1,179 @@
+```yaml
+openapi: 3.0.0
+info:
+  title: Chat WebSocket API
+  description: API para autenticação de usuários e conexão a chats em tempo real via WebSocket com autenticação JWT e integração Redis.
+  version: 1.0.0
+  servers:
+    - url: http://api.example.dev.com/v1
+      description: Ambiente de dev
+    - url: http://api.example.hom.com/v1
+      description: Ambiente de homol
+    - url: http://api.example.prod.com/v1
+      description: Ambiente de Prod
+paths:
+  /login:
+    post:
+      summary: Login do usuário com geração de tokens JWT
+      description: Permite que um usuário realize login informando nome de usuário e senha. Retorna access_token e refresh_token para autenticação.
+      operationId: loginUser
+      requestBody:
+        description: Credenciais do usuário para autenticação.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              user: bruno
+              password: "1234"
+      responses:
+        '200':
+          description: Login realizado com sucesso. Retorna os tokens de acesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+              example:
+                access_token: "<jwt_access_token>"
+                refresh_token: "<jwt_refresh_token>"
+        '400':
+          description: Requisição inválida (dados ausentes ou mal formatados).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "invalid request"
+        '401':
+          description: Credenciais inválidas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "invalid credentials"
+  /refresh:
+    post:
+      summary: Refresh de token JWT (gerar novo access_token)
+      description: Permite trocar um refresh_token válido por um novo access_token JWT. Mantém a sessão ativa sem novo login.
+      operationId: refreshToken
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Token JWT de refresh no formato Bearer &lt;refresh_token&gt;
+      responses:
+        '200':
+          description: Novo access_token gerado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshResponse'
+              example:
+                access_token: "<novo_access_token>"
+        '401':
+          description: Refresh token inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "invalid refresh token"
+  /ws:
+    get:
+      summary: Conexão WebSocket autenticada (entrada no chat)
+      description: Estabelece conexão WebSocket autenticada para o chat em tempo real. Requer JWT válido e autorização para a sala.
+      operationId: connectWebSocketChat
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Token JWT de acesso no formato Bearer &lt;access_token&gt;
+        - name: room
+          in: query
+          required: false
+          schema:
+            type: string
+            default: default
+          description: Nome da sala do chat (default se não informado)
+        - name: user
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Nome do usuário que irá se conectar ao chat
+      responses:
+        '101':
+          description: Upgrade para protocolo WebSocket realizado com sucesso.
+        '401':
+          description: Token de acesso ausente ou inválido (não autorizado).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "unauthorized"
+        '403':
+          description: Usuário não autorizado a acessar a sala requisitada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "forbidden"
+components:
+  schemas:
+    LoginRequest:
+      type: object
+      required:
+        - user
+        - password
+      properties:
+        user:
+          type: string
+          description: Nome do usuário.
+          example: bruno
+        password:
+          type: string
+          description: Senha do usuário.
+          example: "1234"
+    LoginResponse:
+      type: object
+      required:
+        - access_token
+        - refresh_token
+      properties:
+        access_token:
+          type: string
+          description: JWT para autenticação nas rotas protegidas e WebSocket.
+          example: "<jwt_access_token>"
+        refresh_token:
+          type: string
+          description: JWT de refresh para renovação do access_token.
+          example: "<jwt_refresh_token>"
+    RefreshResponse:
+      type: object
+      required:
+        - access_token
+      properties:
+        access_token:
+          type: string
+          description: Novo JWT de acesso.
+          example: "<novo_access_token>"
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "mensagem de erro"
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+```
