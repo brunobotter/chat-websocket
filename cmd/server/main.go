@@ -6,12 +6,15 @@ import (
 
 	"github.com/brunobotter/chat-websocket/internal/config"
 	"github.com/brunobotter/chat-websocket/internal/logger"
+	"github.com/brunobotter/chat-websocket/internal/main/app"
+	"github.com/brunobotter/chat-websocket/internal/main/providers"
 	"github.com/brunobotter/chat-websocket/internal/router"
 	"github.com/brunobotter/chat-websocket/internal/websocket"
 	"go.uber.org/zap"
 )
 
 func main() {
+	app.NewApplication(providers.List()).Bootstrap()
 	logger.Init()
 	cfg := config.Init()
 	hub := websocket.NewHub(logger.Logger, cfg.Redis)
