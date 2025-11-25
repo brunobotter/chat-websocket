@@ -2,7 +2,7 @@ package config
 
 import "time"
 
-type Mapping struct {
+type Config struct {
 	Server  ServerConfig `mapstructure:"server"`
 	Redis   RedisConfig  `mapstructure:"redis"`
 	AppName string       `mapstructure:"app_name"`

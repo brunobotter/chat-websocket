@@ -4,5 +4,6 @@ func List() []any {
 	return []any{
 		NewConfigServiceProvider(),
 		NewCliServiceProvider(),
+		NewRedisServiceProvider(),
 	}
 }

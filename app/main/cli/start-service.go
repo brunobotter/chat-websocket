@@ -17,7 +17,7 @@ func NewStartServiceCmd(app *app.Application, container container.Container) *co
 			go func() {
 				srv, err := server.NewServer(container)
 				if err != nil {
-					panic(fmt.Errorf("could not initialize server: %s", &err))
+					panic(fmt.Errorf("could not initialize server: %v", &err))
 				}
 				srv.Run(cmd.Context())
 			}()

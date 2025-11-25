@@ -8,7 +8,7 @@ import (
 
 func WebSocketHandler(cfg *config.Config, hub *websocket.Hub) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		websocket.HandleConnections(hub, c.Response().Writer, c.Request(), cfg.Redis)
+		//	websocket.HandleConnections(hub, c.Response().Writer, c.Request(), cfg.Redis)
 		return nil
 	}
 }

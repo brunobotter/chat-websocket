@@ -4,13 +4,14 @@ import (
 	"context"
 	"time"
 
+	"github.com/brunobotter/chat-websocket/logger"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
 type ClientWrapper struct {
 	Client *redis.Client
-	Logger *zap.Logger
+	Logger logger.Logger
 }
 
 type RedisConfig struct {
@@ -24,7 +25,7 @@ type RedisConfig struct {
 	MinIdleConns int
 }
 
-func NewClient(cfg RedisConfig, logger *zap.Logger) (*ClientWrapper, error) {
+func NewClient(cfg RedisConfig, logger logger.Logger) (*ClientWrapper, error) {
 	logger.Info("Inicializando Redis client", zap.String("addr", cfg.Addr))
 
 	opts := &redis.Options{
@@ -43,7 +44,6 @@ func NewClient(cfg RedisConfig, logger *zap.Logger) (*ClientWrapper, error) {
 	defer cancel()
 
 	if err := rdb.Ping(ctx).Err(); err != nil {
-		logger.Fatal("Falha no ping ao Redis", zap.Error(err))
 		_ = rdb.Close()
 		return nil, err
 	}
@@ -57,6 +57,5 @@ func NewClient(cfg RedisConfig, logger *zap.Logger) (*ClientWrapper, error) {
 }
 
 func (cw *ClientWrapper) Close() error {
-	cw.Logger.Info("Fechando conexão com Redis")
 	return cw.Client.Close()
 }

@@ -5,16 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/brunobotter/chat-websocket/redis"
 	"github.com/spf13/viper"
-	"go.uber.org/zap"
 )
-
-type Config struct {
-	Mapping *Mapping
-	Logger  *zap.Logger
-	Redis   *redis.ClientWrapper
-}
 
 func Init() *Config {
 
@@ -22,52 +14,40 @@ func Init() *Config {
 	if err != nil {
 		panic(fmt.Sprintf("Erro ao ler configuração: %v", err))
 	}
-	/*redisCfg := redis.RedisConfig{
-		Addr:         cfg.Redis.Addr,
-		Password:     cfg.Redis.Password,
-		DB:           cfg.Redis.DB,
-		DialTimeout:  cfg.Redis.DialTimeout,
-		ReadTimeout:  cfg.Redis.ReadTimeout,
-		WriteTimeout: cfg.Redis.WriteTimeout,
-		PoolSize:     cfg.Redis.PoolSize,
-		MinIdleConns: cfg.Redis.MinIdleConns,
-	}*/
 
-	/*redisClient, err := redis.NewClient(redisCfg, cfg.Logger)
-	if err != nil {
-
-	}*/
-
-	deps := &Config{
-		Mapping: cfg,
-		Logger:  nil,
-		Redis:   nil,
-	}
-	return deps
+	return cfg
 }
 
-func Read() (*Mapping, error) {
+func Read() (*Config, error) {
 	v := viper.New()
-
-	v.AddConfigPath(".")
-	v.AddConfigPath("../")
-	v.AddConfigPath("../../")
-
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	viper.AutomaticEnv()
-	v.SetConfigName(".env")
+	v.SetConfigFile(".env")
 	v.SetConfigType("env")
-	v.SetTypeByDefaultValue(true)
+	v.AutomaticEnv()
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
-	err := viper.ReadInConfig()
+	v.BindEnv("server.port", "SERVER_PORT")
+	v.BindEnv("server.host", "SERVER_HOST")
 
+	v.BindEnv("redis.addr", "REDIS_ADDR")
+	v.BindEnv("redis.password", "REDIS_PASSWORD")
+	v.BindEnv("redis.db", "REDIS_DB")
+	v.BindEnv("redis.pool_size", "REDIS_POOL_SIZE")
+	v.BindEnv("redis.min_idle_conns", "REDIS_MIN_IDLE_CONNS")
+	v.BindEnv("redis.dial_timeout", "REDIS_DIAL_TIMEOUT")
+	v.BindEnv("redis.read_timeout", "REDIS_READ_TIMEOUT")
+	v.BindEnv("redis.write_timeout", "REDIS_WRITE_TIMEOUT")
+
+	v.BindEnv("app_name", "APP_NAME")
+	v.BindEnv("env", "ENV")
+
+	// Não precisa ler o arquivo se só usa env, mas pode manter:
+	err := v.ReadInConfig()
 	if err != nil && !errors.As(err, &viper.ConfigFileNotFoundError{}) {
 		return nil, err
 	}
 
-	config := Mapping{}
-
-	err = viper.Unmarshal(&config)
+	config := Config{}
+	err = v.Unmarshal(&config)
 	if err != nil {
 		return nil, err
 	}
