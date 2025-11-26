@@ -8,7 +8,6 @@ import (
 
 	"github.com/brunobotter/chat-websocket/dto"
 	"github.com/brunobotter/chat-websocket/logger"
-	"github.com/brunobotter/chat-websocket/websocket"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -19,7 +18,7 @@ type Publisher interface {
 
 // Interface para subscribe
 type Subscriber interface {
-	SubscribeAllRooms(ctx context.Context, hub *websocket.Hub)
+	SubscribeAllRooms(ctx context.Context, handler func(dto.Message))
 }
 
 // Interface para persistência
@@ -37,7 +36,7 @@ type ClientWrapper struct {
 	Logger logger.Logger
 }
 
-func (cw *ClientWrapper) SubscribeAllRooms(ctx context.Context, hub *websocket.Hub) {
+func (cw *ClientWrapper) SubscribeAllRooms(ctx context.Context, handler func(dto.Message)) {
 	cw.Logger.Info("Iniciando subscriber genérico Redis para todas as salas")
 	pubsub := cw.Client.PSubscribe(ctx, "chat:*")
 	defer pubsub.Close()
@@ -60,7 +59,7 @@ func (cw *ClientWrapper) SubscribeAllRooms(ctx context.Context, hub *websocket.H
 				continue
 			}
 
-			hub.Broadcast <- message
+			handler(message)
 
 		}
 	}

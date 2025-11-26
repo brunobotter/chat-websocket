@@ -6,6 +6,7 @@ import (
 
 	"github.com/brunobotter/chat-websocket/dto"
 	"github.com/brunobotter/chat-websocket/logger"
+	"github.com/brunobotter/chat-websocket/redis"
 )
 
 type Hub struct {
@@ -14,10 +15,10 @@ type Hub struct {
 	Register   chan *Client
 	Unregister chan *Client
 	logger     logger.Logger
-	ChatStore  ChatStore
+	ChatStore  redis.MessageStore
 }
 
-func NewHub(logger logger.Logger, chatStore ChatStore) *Hub {
+func NewHub(logger logger.Logger, chatStore redis.MessageStore) *Hub {
 	return &Hub{
 		Rooms:      make(map[string]map[*Client]bool),
 		Broadcast:  make(chan dto.Message),

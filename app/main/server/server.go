@@ -10,6 +10,7 @@ import (
 	"github.com/brunobotter/chat-websocket/logger"
 	"github.com/brunobotter/chat-websocket/main/container"
 	"github.com/brunobotter/chat-websocket/main/server/router"
+	"github.com/brunobotter/chat-websocket/redis"
 	"github.com/brunobotter/chat-websocket/websocket"
 	"github.com/labstack/echo/v4"
 )
@@ -39,10 +40,14 @@ func (s *Server) setup() {
 
 	var cfg *config.Config
 	var hub *websocket.Hub
+	var messageStore redis.MessageStore
+	var publisher redis.Publisher
+
 	s.container.Resolve(&cfg)
 	s.container.Resolve(&hub)
-
-	router.RegisterRoutes(s.echo, cfg, hub)
+	s.container.Resolve(&messageStore)
+	s.container.Resolve(&publisher)
+	router.RegisterRoutes(s.echo, cfg, hub, messageStore, publisher)
 
 }
 

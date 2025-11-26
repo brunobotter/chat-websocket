@@ -16,4 +16,7 @@ func (p *RedisServiceProvider) Register(c container.Container) {
 	c.Singleton(func(redisConfig redis.RedisConfig, logger logger.Logger) (*redis.ClientWrapper, error) {
 		return redis.NewClient(redisConfig, logger)
 	})
+	c.Singleton(func(cw *redis.ClientWrapper) redis.MessageStore { return cw })
+	c.Singleton(func(cw *redis.ClientWrapper) redis.Publisher { return cw })
+
 }

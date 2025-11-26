@@ -8,6 +8,7 @@ import (
 
 	"github.com/brunobotter/chat-websocket/auth"
 	"github.com/brunobotter/chat-websocket/dto"
+	"github.com/brunobotter/chat-websocket/redis"
 	"github.com/gorilla/websocket"
 )
 
@@ -23,7 +24,7 @@ type Client struct {
 	User   string
 }
 
-func HandleConnections(hub *Hub, w http.ResponseWriter, r *http.Request, store ChatStore) {
+func HandleConnections(hub *Hub, w http.ResponseWriter, r *http.Request, messageStore redis.MessageStore, publisher redis.Publisher) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return
@@ -76,7 +77,7 @@ func HandleConnections(hub *Hub, w http.ResponseWriter, r *http.Request, store C
 	hub.Register <- client
 
 	// 5. Envia histórico
-	if history, err := store.GetMessages(r.Context(), room, 50); err == nil {
+	if history, err := messageStore.GetMessages(r.Context(), room, 50); err == nil {
 		for _, msg := range history {
 			client.Send <- []byte(msg.Content)
 		}
@@ -87,10 +88,10 @@ func HandleConnections(hub *Hub, w http.ResponseWriter, r *http.Request, store C
 	client.Send <- msg
 
 	go client.writePump()
-	client.readPump(store)
+	client.readPump(publisher, messageStore)
 }
 
-func (c *Client) readPump(store ChatStore) {
+func (c *Client) readPump(publisher redis.Publisher, messageStore redis.MessageStore) {
 	defer func() {
 		c.Hub.Unregister <- c
 		c.Conn.Close()
@@ -115,8 +116,8 @@ func (c *Client) readPump(store ChatStore) {
 		}
 
 		ctx := context.Background()
-		_ = store.PublishMessage(ctx, "chat:"+c.RoomID, msg)
-		_ = store.SaveMessage(ctx, c.RoomID, msg, 50)
+		_ = publisher.PublishMessage(ctx, "chat:"+c.RoomID, msg)
+		_ = messageStore.SaveMessage(ctx, c.RoomID, msg, 50)
 	}
 }
 

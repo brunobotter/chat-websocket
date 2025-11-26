@@ -3,6 +3,7 @@ package providers
 import (
 	"context"
 
+	"github.com/brunobotter/chat-websocket/dto"
 	"github.com/brunobotter/chat-websocket/logger"
 	"github.com/brunobotter/chat-websocket/main/container"
 	"github.com/brunobotter/chat-websocket/redis"
@@ -18,7 +19,9 @@ func NewHubServiceProvider() *HubServiceProvider {
 func (p *HubServiceProvider) Register(c container.Container) {
 	c.Singleton(func(logger logger.Logger, redisClient *redis.ClientWrapper) (*websocket.Hub, error) {
 		hub := websocket.NewHub(logger, redisClient)
-		go redisClient.SubscribeAllRooms(context.Background(), hub)
+		go redisClient.SubscribeAllRooms(context.Background(), func(msg dto.Message) {
+			hub.Broadcast <- msg
+		})
 		return hub, nil
 	})
 }
