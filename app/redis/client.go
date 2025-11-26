@@ -9,11 +9,6 @@ import (
 	"go.uber.org/zap"
 )
 
-type ClientWrapper struct {
-	Client *redis.Client
-	Logger logger.Logger
-}
-
 type RedisConfig struct {
 	Addr         string
 	Password     string
@@ -54,8 +49,4 @@ func NewClient(cfg RedisConfig, logger logger.Logger) (*ClientWrapper, error) {
 		Client: rdb,
 		Logger: logger,
 	}, nil
-}
-
-func (cw *ClientWrapper) Close() error {
-	return cw.Client.Close()
 }

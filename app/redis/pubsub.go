@@ -7,8 +7,35 @@ import (
 	"time"
 
 	"github.com/brunobotter/chat-websocket/dto"
+	"github.com/brunobotter/chat-websocket/logger"
 	"github.com/brunobotter/chat-websocket/websocket"
+	"github.com/redis/go-redis/v9"
 )
+
+// Interface para publicação
+type Publisher interface {
+	PublishMessage(ctx context.Context, channel string, msg dto.Message) error
+}
+
+// Interface para subscribe
+type Subscriber interface {
+	SubscribeAllRooms(ctx context.Context, hub *websocket.Hub)
+}
+
+// Interface para persistência
+type MessageStore interface {
+	SaveMessage(ctx context.Context, roomID string, msg dto.Message, maxMessages int) error
+	GetMessages(ctx context.Context, roomID string, limit int) ([]dto.Message, error)
+	SaveUnread(ctx context.Context, user string, msg dto.Message) error
+	GetUnreadMessages(ctx context.Context, user string) ([]dto.Message, error)
+	ClearUnread(ctx context.Context, user string) error
+	Close() error
+}
+
+type ClientWrapper struct {
+	Client *redis.Client
+	Logger logger.Logger
+}
 
 func (cw *ClientWrapper) SubscribeAllRooms(ctx context.Context, hub *websocket.Hub) {
 	cw.Logger.Info("Iniciando subscriber genérico Redis para todas as salas")
@@ -132,4 +159,22 @@ func (cw *ClientWrapper) ClearUnread(ctx context.Context, user string) error {
 		return err
 	}
 	return nil
+}
+
+func (cw *ClientWrapper) PublishMessage(ctx context.Context, channel string, msg dto.Message) error {
+	payload, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+
+	if err := cw.Client.Publish(ctx, channel, payload).Err(); err != nil {
+
+		return err
+	}
+
+	return nil
+}
+
+func (cw *ClientWrapper) Close() error {
+	return cw.Client.Close()
 }

@@ -13,5 +13,5 @@ func RegisterRoutes(e *echo.Echo, cfg *config.Config, hub *websocket.Hub) {
 	e.POST("/refresh", handler.Refresh)
 
 	// Rotas protegidas
-	e.GET("/ws", handler.WebSocketHandler(cfg, hub))
+	e.GET("/ws", handler.WebSocketHandler(hub))
 }
