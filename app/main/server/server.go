@@ -7,17 +7,18 @@ import (
 	"time"
 
 	"github.com/brunobotter/chat-websocket/config"
-	"github.com/brunobotter/chat-websocket/main/adapters"
+	"github.com/brunobotter/chat-websocket/logger"
 	"github.com/brunobotter/chat-websocket/main/container"
 	"github.com/brunobotter/chat-websocket/main/server/router"
+	"github.com/brunobotter/chat-websocket/websocket"
 	"github.com/labstack/echo/v4"
 )
 
 type Server struct {
 	container container.Container
-	config    *config.ServerConfig
-	//inserir logger
-	echo *echo.Echo
+	config    *config.Config
+	logger    logger.Logger
+	echo      *echo.Echo
 }
 
 func NewServer(c container.Container) (*Server, error) {
@@ -27,7 +28,7 @@ func NewServer(c container.Container) (*Server, error) {
 	}
 
 	c.Resolve(&server.config)
-	//c.Resolve(&server.logger)
+	c.Resolve(&server.logger)
 
 	server.setup()
 	return server, nil
@@ -36,10 +37,12 @@ func NewServer(c container.Container) (*Server, error) {
 func (s *Server) setup() {
 	s.echo.HideBanner = true
 
-	adapterRouter := adapters.NewEchoRouterAdapter(s.echo)
-	s.container.Singleton(func() router.Router {
-		return adapterRouter.Group("/api/v1", nil)
-	})
+	var cfg *config.Config
+	var hub *websocket.Hub
+	s.container.Resolve(&cfg)
+	s.container.Resolve(&hub)
+
+	router.RegisterRoutes(s.echo, cfg, hub)
 
 }
 
@@ -54,7 +57,7 @@ func (s *Server) waitForShutdown(ctx context.Context) {
 
 func (s *Server) Run(ctx context.Context) {
 	go func() {
-		address := fmt.Sprintf(":%d", s.config.Port)
+		address := fmt.Sprintf(":%d", s.config.Server.Port)
 		if err := s.echo.Start(address); err != nil && err != http.ErrServerClosed {
 			s.echo.Logger.Fatal(err)
 		}

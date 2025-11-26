@@ -7,14 +7,11 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func NewRouter(cfg *config.Config, hub *websocket.Hub) *echo.Echo {
-	e := echo.New()
-
+func RegisterRoutes(e *echo.Echo, cfg *config.Config, hub *websocket.Hub) {
 	// Rotas públicas
 	e.POST("/login", handler.Login)
 	e.POST("/refresh", handler.Refresh)
 
 	// Rotas protegidas
 	e.GET("/ws", handler.WebSocketHandler(cfg, hub))
-	return e
 }

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/brunobotter/chat-websocket/dto"
-	"go.uber.org/zap"
+	"github.com/brunobotter/chat-websocket/logger"
 )
 
 type Hub struct {
@@ -13,11 +13,11 @@ type Hub struct {
 	Broadcast  chan dto.Message
 	Register   chan *Client
 	Unregister chan *Client
-	logger     *zap.Logger
+	logger     logger.Logger
 	ChatStore  ChatStore
 }
 
-func NewHub(logger *zap.Logger, chatStore ChatStore) *Hub {
+func NewHub(logger logger.Logger, chatStore ChatStore) *Hub {
 	return &Hub{
 		Rooms:      make(map[string]map[*Client]bool),
 		Broadcast:  make(chan dto.Message),
@@ -46,7 +46,6 @@ func (h *Hub) Run() {
 
 					unread, err := h.ChatStore.GetUnreadMessages(ctx, c.User)
 					if err != nil {
-						h.logger.Error("Falha ao buscar mensagens não lidas", zap.String("user", c.User), zap.Error(err))
 						return
 					}
 					for _, msg := range unread {
