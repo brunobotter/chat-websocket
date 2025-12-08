@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"unsafe"
 )
 
 type binding struct {
@@ -141,51 +140,6 @@ func (c Container) Singleton(resolver interface{}) error {
 	return c.bind(resolver, "", true, false)
 }
 
-// SingletonLazy binds an abstraction to concrete lazily in singleton mode.
-// The concrete is resolved only when the abstraction is resolved for the first time.
-// It takes a resolver function that returns the concrete, and its return type matches the abstraction (interface).
-// The resolver function can have arguments of abstraction that have been declared in the Container already.
-func (c Container) SingletonLazy(resolver interface{}) error {
-	return c.bind(resolver, "", true, true)
-}
-
-// NamedSingleton binds a named abstraction to concrete in singleton mode.
-func (c Container) NamedSingleton(name string, resolver interface{}) error {
-	return c.bind(resolver, name, true, false)
-}
-
-// NamedSingleton binds a named abstraction to concrete lazily in singleton mode.
-// The concrete is resolved only when the abstraction is resolved for the first time.
-func (c Container) NamedSingletonLazy(name string, resolver interface{}) error {
-	return c.bind(resolver, name, true, true)
-}
-
-// Transient binds an abstraction to concrete in transient mode.
-// It takes a resolver function that returns the concrete, and its return type matches the abstraction (interface).
-// The resolver function can have arguments of abstraction that have been declared in the Container already.
-func (c Container) Transient(resolver interface{}) error {
-	return c.bind(resolver, "", false, false)
-}
-
-// TransientLazy binds an abstraction to concrete lazily in transient mode.
-// Normally the resolver will be called during registration, but that is skipped in lazy mode.
-// It takes a resolver function that returns the concrete, and its return type matches the abstraction (interface).
-// The resolver function can have arguments of abstraction that have been declared in the Container already.
-func (c Container) TransientLazy(resolver interface{}) error {
-	return c.bind(resolver, "", false, true)
-}
-
-// NamedTransient binds a named abstraction to concrete lazily in transient mode.
-func (c Container) NamedTransient(name string, resolver interface{}) error {
-	return c.bind(resolver, name, false, false)
-}
-
-// NamedTransient binds a named abstraction to concrete in transient mode.
-// Normally the resolver will be called during registration, but that is skipped in lazy mode.
-func (c Container) NamedTransientLazy(name string, resolver interface{}) error {
-	return c.bind(resolver, name, false, true)
-}
-
 // Call takes a receiver function with one or more arguments of the abstractions (interfaces).
 // It invokes the receiver function and passes the related concretes.
 func (c Container) Call(function interface{}) (any, error) {
@@ -244,53 +198,4 @@ func (c Container) NamedResolve(abstraction interface{}, name string) error {
 	}
 
 	return errors.New("container: invalid abstraction")
-}
-
-// Fill takes a struct and resolves the fields with the tag `container:"inject"`
-func (c Container) Fill(structure interface{}) error {
-	receiverType := reflect.TypeOf(structure)
-	if receiverType == nil {
-		return errors.New("container: invalid structure")
-	}
-
-	if receiverType.Kind() == reflect.Ptr {
-		elem := receiverType.Elem()
-		if elem.Kind() == reflect.Struct {
-			s := reflect.ValueOf(structure).Elem()
-
-			for i := 0; i < s.NumField(); i++ {
-				f := s.Field(i)
-
-				if t, exist := s.Type().Field(i).Tag.Lookup("container"); exist {
-					var name string
-
-					if t == "type" {
-						name = ""
-					} else if t == "name" {
-						name = s.Type().Field(i).Name
-					} else {
-						return fmt.Errorf("container: %v has an invalid struct tag", s.Type().Field(i).Name)
-					}
-
-					if concrete, exist := c[f.Type()][name]; exist {
-						instance, err := concrete.make(c)
-						if err != nil {
-							return err
-						}
-
-						ptr := reflect.NewAt(f.Type(), unsafe.Pointer(f.UnsafeAddr())).Elem()
-						ptr.Set(reflect.ValueOf(instance))
-
-						continue
-					}
-
-					return fmt.Errorf("container: cannot make %v field", s.Type().Field(i).Name)
-				}
-			}
-
-			return nil
-		}
-	}
-
-	return errors.New("container: invalid structure")
 }
